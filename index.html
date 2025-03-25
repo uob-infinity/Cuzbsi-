@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Masuk ke BSI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"/>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+        }
+        .form-container {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .login-button {
+            background: linear-gradient(to bottom, #f5af19, #f5af19);
+            border: none;
+            border-radius: 10px;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease-in-out;
+            width: 100%;
+        }
+        .login-button:hover {
+            background: linear-gradient(to bottom, #e07b00, #e07b00);
+            box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.3);
+        }
+        .password-toggle {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .password-toggle:hover {
+            color: #0d9488; /* teal-600 */
+        }
+        #captchaCanvas {
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .captcha-container {
+            margin-bottom: 1.25rem;
+        }
+        .captcha-title {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #4b5563;
+            margin-bottom: 0.5rem;
+        }
+        @media (max-width: 400px) {
+            .form-container {
+                padding: 15px;
+                width: 90%;
+            }
+            .login-button {
+                font-size: 18px;
+                padding: 12px 30px;
+            }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm form-container">
+        <div class="flex items-center justify-center mb-6">
+            <div class="container flex items-center gap-2 justify-center">
+                <span class="text text-2xl font-normal text-teal-600">Masuk ke BSI</span>
+                <div class="menu-icon w-10 h-10 bg-teal-600 rounded-full flex flex-col items-center justify-center cursor-pointer">
+                    <div class="bar w-5 h-0.5 bg-white my-0.5"></div>
+                    <div class="bar w-5 h-0.5 bg-white my-0.5"></div>
+                    <div class="bar w-5 h-0.5 bg-white my-0.5"></div>
+                </div>
+            </div>
+        </div>
+        <form id="loginForm" onsubmit="return validateForm(event)">
+            <div class="mb-4">
+                <label class="block text-gray-600 mb-1 text-sm">ID Perusahaan</label>
+                <input class="w-full px-4 py-2.5 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-600 text-sm" 
+                       placeholder="Masukkan ID Perusahaan" 
+                       type="text" 
+                       id="companyId" 
+                       required/>
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-600 mb-1 text-sm">ID Pengguna</label>
+                <input class="w-full px-4 py-2.5 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-600 text-sm" 
+                       placeholder="Masukkan ID Pengguna" 
+                       type="text" 
+                       id="userId" 
+                       required/>
+            </div>
+            <div class="mb-4 relative">
+                <label class="block text-gray-600 mb-1 text-sm">Kata sandi</label>
+                <input class="w-full px-4 py-2.5 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-600 text-sm" 
+                       placeholder="Masukkan Kata Sandi" 
+                       type="password" 
+                       id="password" 
+                       required/>
+                <i class="fas fa-eye password-toggle absolute right-3 top-10 text-gray-500" 
+                   id="togglePassword"></i>
+            </div>
+            <div class="captcha-container">
+                <label class="captcha-title">Verifikasi Keamanan</label>
+                <canvas height="60" id="captchaCanvas" width="200" class="mb-2"></canvas>
+                <a class="text-teal-600 cursor-pointer text-sm hover:underline" 
+                   onclick="generateCaptcha()">Segarkan Captcha</a>
+                <br/>
+                <input class="w-full px-4 py-2.5 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-600 text-sm mt-2" 
+                       id="captchaInput" 
+                       placeholder="Masukkan kode captcha" 
+                       type="text" 
+                       required/>
+                <p class="mt-2 text-sm" id="captchaMessage"></p>
+            </div>
+            <button type="submit" class="login-button">LOGIN</button>
+        </form>
+        <div class="flex justify-between items-center mt-5">
+            <a class="text-teal-600 text-sm hover:underline" href="#">Lupa Kata Sandi?</a>
+            <a class="text-teal-600 text-sm hover:underline" href="#">Buka Kunci Akun</a>
+        </div>
+    </div>
+    <script>
+        let captchaCode = "";
+        
+        // Generate captcha when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            generateCaptcha();
+            
+            // Add password toggle functionality
+            const togglePassword = document.getElementById('togglePassword');
+            const passwordInput = document.getElementById('password');
+            
+            togglePassword.addEventListener('click', function() {
+                // Toggle the type attribute
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                
+                // Toggle the icon
+                this.classList.toggle('fa-eye');
+                this.classList.toggle('fa-eye-slash');
+            });
+        });
+        
+        function generateCaptcha() {
+            const canvas = document.getElementById("captchaCanvas");
+            const ctx = canvas.getContext("2d");
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Fill background
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Membuat pola garis bersilangan seperti pada contoh
+            ctx.strokeStyle = "#aaaaaa"; // Warna abu-abu terang
+            ctx.lineWidth = 0.5; // Garis sangat tipis
+            
+            // Garis diagonal dari kiri atas ke kanan bawah
+            const spacing = 8; // Jarak antar garis
+            for (let i = -canvas.height; i < canvas.width + canvas.height; i += spacing) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i + canvas.height, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Garis diagonal dari kanan atas ke kiri bawah
+            for (let i = -canvas.height; i < canvas.width + canvas.height; i += spacing) {
+                ctx.beginPath();
+                ctx.moveTo(canvas.width - i, 0);
+                ctx.lineTo(canvas.width - (i + canvas.height), canvas.height);
+                ctx.stroke();
+            }
+            
+            // Beberapa garis yang lebih gelap untuk variasi
+            ctx.strokeStyle = "#666666"; // Warna abu-abu lebih gelap
+            for (let i = 0; i < 10; i++) {
+                const x = Math.floor(Math.random() * canvas.width);
+                const y = Math.floor(Math.random() * canvas.height);
+                const length = 20 + Math.floor(Math.random() * 30);
+                const angle = Math.random() * Math.PI;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + length * Math.cos(angle), y + length * Math.sin(angle));
+                ctx.stroke();
+            }
+            
+            // Generate random code (4 characters)
+            // Gunakan kombinasi huruf dan angka seperti pada contoh
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            captchaCode = "";
+            for (let i = 0; i < 4; i++) {
+                captchaCode += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            
+            // Draw captcha text
+            ctx.font = "bold 28px Arial";
+            
+            // Draw each character with different angles
+            for (let i = 0; i < captchaCode.length; i++) {
+                let x = 20 + i * 40;
+                let y = 40;
+                let angle = Math.random() * 0.2 - 0.1; // Sedikit miring
+                
+                ctx.fillStyle = "#000000"; // Warna hitam untuk teks
+                
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(angle);
+                ctx.fillText(captchaCode[i], 0, 0);
+                ctx.restore();
+            }
+            
+            // Tambahkan garis horizontal tebal di bawah teks
+            ctx.strokeStyle = "#000000";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(10, 45);
+            ctx.lineTo(canvas.width - 10, 45);
+            ctx.stroke();
+            
+            // Clear any previous message
+            document.getElementById("captchaMessage").textContent = "";
+            document.getElementById("captchaInput").value = "";
+        }
+        
+        function validateCaptcha() {
+            const input = document.getElementById("captchaInput").value.toUpperCase();
+            const message = document.getElementById("captchaMessage");
+            
+            if (input === captchaCode) {
+                message.style.color = "green";
+                message.textContent = "Captcha benar!";
+                return true;
+            } else {
+                message.style.color = "red";
+                message.textContent = "Captcha salah, coba lagi!";
+                generateCaptcha(); // Refresh captcha on wrong attempt
+                return false;
+            }
+        }
+        
+        function validateForm(event) {
+            event.preventDefault();
+            
+            // Validate captcha first
+            if (!validateCaptcha()) {
+                return false;
+            }
+            
+            // If captcha is valid, you can proceed with form submission
+            // For demo purposes, we'll just show an alert
+            alert("Login berhasil! Form akan dikirim ke server.");
+            
+            // In a real application, you would submit the form to your server
+            // document.getElementById("loginForm").submit();
+            
+            return false; // Prevent actual form submission for this demo
+        }
+    </script>
+</body>
+</html>
+
